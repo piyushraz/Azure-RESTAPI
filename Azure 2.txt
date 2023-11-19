@@ -1,0 +1,28 @@
+import requests
+import json
+
+# Set the Azure DevOps organization and project name
+organization = "<your-organization>"
+project_name = "<your-project-name>"
+
+# Set the Azure DevOps REST API URL for creating a project
+url = "https://dev.azure.com/" + organization + "/_apis/projects?api-version=6.1-preview.4"
+
+# Set the authorization header with the personal access token
+headers = {
+    "Authorization": "Bearer " + "<your-PAT>",
+    "Content-Type": "application/json"
+}
+
+# Set the request body with the project name and description
+body = {
+    "name": project_name,
+    "description": "My new DevOps project"
+}
+
+# Send the POST request to create the project
+response = requests.post(url, headers=headers, json=body)
+
+# Print the response status code and JSON content
+print("Status code:", response.status_code)
+print("Response content:", json.dumps(response.json(), indent=4))

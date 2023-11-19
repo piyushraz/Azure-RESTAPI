@@ -1,0 +1,88 @@
+import requests
+
+def assign_user_to_project(file_path):
+    # Step 2
+    with open(file_path, 'r') as file:
+        # Step 3
+        lines = file.read().splitlines()
+
+        # Step 4-5
+        for line in lines:
+            email, access_level, project_name = line.split(',')
+            
+            # Step 6: Check if user exists in organization
+            if not user_exists(email):
+                add_user_to_organization(email)
+                
+            # Step 7: Assign user to project
+            if assign_user_to_project(email, access_level, project_name):
+                print(f'Successfully assigned {email} to {project_name} with access level {access_level}.')
+            else:
+                print(f'Error assigning {email} to {project_name}.')
+        
+def user_exists(email):
+    url = f'https://graph.microsoft.com/v1.0/users/{email}'
+    
+    headers = {
+        'Authorization': 'Bearer <access_token>',
+        'Content-Type': 'application/json'
+    }
+    
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        return True
+    elif response.status_code == 404:
+        return False
+    else:
+        print(f'Error checking if user {email} exists: {response.content}')
+        return False
+
+def add_user_to_organization(email):
+    url = 'https://graph.microsoft.com/v1.0/users'
+    
+    headers = {
+        'Authorization': 'Bearer <access_token>',
+        'Content-Type': 'application/json'
+    }
+    
+    payload = {
+        'accountEnabled': True,
+        'displayName': email.split('@')[0],
+        'mailNickname': email.split('@')[0],
+        'userPrincipalName': email,
+        'passwordProfile': {
+            'forceChangePasswordNextSignIn': True,
+            'password': 'P@ssw0rd!'
+        }
+    }
+    
+    response = requests.post(url, headers=headers, json=payload)
+    
+    if response.status_code == 201:
+        print(f'Successfully added user {email} to organization.')
+        return True
+    else:
+        print(f'Error adding user {email} to organization: {response.content}')
+        return False
+
+def assign_user_to_project(email, access_level, project_name):
+    url = f'https://management.azure.com/subscriptions/<subscription_id>/resourceGroups/<resource_group_name>/providers/Microsoft.DevOps/project/{project_name}/users/{email}?api-version=2019-06-01-preview'
+    
+    headers = {
+        'Authorization': 'Bearer <access_token>',
+        'Content-Type': 'application/json'
+    }
+    
+    payload = {
+        'subjectDescriptor': f'{email}',
+        'accessLevel': f'{access_level}'
+    }
+    
+    response = requests.put(url, headers=headers, json=payload)
+    
+    if response.status_code == 200:
+        return True
+    else:
+        print(f'Error assigning {email} to {project_name}: {response.content}')
+        return False

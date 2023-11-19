@@ -1,0 +1,115 @@
+import requests
+import json
+
+def create_process_in_azure(process_name, process_description, process_type, org_url, access_token):
+    # Define process to be created
+    process = {
+        "name": process_name,
+        "description": process_description,
+        "type": process_type
+    }
+
+    # Define REST API URL and headers
+    api_url = org_url + "/_apis/process/processes?api-version=6.1-preview.1"
+    headers = {
+        "Authorization": "Bearer " + access_token,
+        "Content-Type": "application/json"
+    }
+
+    # Send POST request to create process
+    response = requests.post(api_url, headers=headers, data=json.dumps(process))
+
+    # Check if process creation was successful
+    if response.status_code == 200:
+        print("Process created successfully!")
+    else:
+        print("Error creating process!")
+
+
+_____
+
+
+org_url = "https://dev.azure.com/<organization-name>"
+access_token = "<your-access-token>"
+
+process_name = input("Enter process name: ")
+process_description = input("Enter process description: ")
+process_type = input("Enter process type (CMMI/Scrum/Agile/Basic): ")
+
+create_process_in_azure(process_name, process_description, process_type, org_url, access_token)
+
+
+_____
+
+
+import tkinter as tk
+import requests
+import json
+
+def create_process_in_azure():
+    # Get input values from user interface
+    process_name = process_name_entry.get()
+    process_description = process_description_entry.get()
+    process_type = process_type_var.get()
+
+    # Define process to be created
+    process = {
+        "name": process_name,
+        "description": process_description,
+        "type": process_type
+    }
+
+    # Define Azure DevOps organization URL and access token
+    org_url = "https://dev.azure.com/<organization-name>"
+    access_token = "<your-access-token>"
+
+    # Define REST API URL and headers
+    api_url = org_url + "/_apis/process/processes?api-version=6.1-preview.1"
+    headers = {
+        "Authorization": "Bearer " + access_token,
+        "Content-Type": "application/json"
+    }
+
+    # Send POST request to create process
+    response = requests.post(api_url, headers=headers, data=json.dumps(process))
+
+    # Check if process creation was successful
+    if response.status_code == 200:
+        result_label.config(text="Process created successfully!", fg="green")
+    else:
+        result_label.config(text="Error creating process!", fg="red")
+
+# Create user interface
+root = tk.Tk()
+root.title("Create Process in Azure DevOps")
+
+# Process Name
+process_name_label = tk.Label(root, text="Process Name:")
+process_name_label.grid(row=0, column=0, sticky="w")
+process_name_entry = tk.Entry(root)
+process_name_entry.grid(row=0, column=1)
+
+# Process Description
+process_description_label = tk.Label(root, text="Process Description:")
+process_description_label.grid(row=1, column=0, sticky="w")
+process_description_entry = tk.Entry(root)
+process_description_entry.grid(row=1, column=1)
+
+# Process Type
+process_type_label = tk.Label(root, text="Process Type:")
+process_type_label.grid(row=2, column=0, sticky="w")
+process_type_var = tk.StringVar()
+process_type_var.set("CMMI") # Default value
+process_type_optionmenu = tk.OptionMenu(root, process_type_var, "CMMI", "Scrum", "Agile", "Basic")
+process_type_optionmenu.grid(row=2, column=1)
+
+# Create Process Button
+create_process_button = tk.Button(root, text="Create Process", command=create_process_in_azure)
+create_process_button.grid(row=3, column=0)
+
+# Result Label
+result_label = tk.Label(root, text="", font=("Arial", 12))
+result_label.grid(row=3, column=1)
+
+root.mainloop()
+

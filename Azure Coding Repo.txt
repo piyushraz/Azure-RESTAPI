@@ -1,0 +1,44 @@
+# Azure Storage Account connection string and container name
+connection_string = 'your-storage-account-connection-string'
+container_name_prefix = 'backup-'
+
+# Authenticate to Azure DevOps
+headers = {'Authorization': 'Bearer ' + pat}
+
+# Retrieve the list of projects in the organization
+projects_url = org_url + '/_apis/projects?api-version=6.0'
+response = requests.get(projects_url, headers=headers)
+projects = response.json()['value']
+
+# Retrieve the list of repositories in each project and backup the contents
+for project in projects:
+    project_name = project['name']
+    repos_url = org_url + '/' + project_name + '/_apis/git/repositories?api-version=6.0'
+    response = requests.get(repos_url, headers=headers)
+    repos = response.json()['value']
+
+    for repo in repos:
+        repo_name = repo['name']
+        repo_id = repo['id']
+        zip_filename = repo_name + '.zip'
+        zip_filepath = os.path.join(os.getcwd(), zip_filename)
+
+        # Download the repository contents as a zip file
+        archive_url = org_url + '/_apis/git/repositories/' + repo_id + '/items?api-version=6.0&download=true&scopePath=%2F'
+        response = requests.get(archive_url, headers=headers)
+        with open(zip_filepath, 'wb') as f:
+            f.write(response.content)
+
+        # Authenticate to Azure Storage Account and create a container with the project name
+        container_name = container_name_prefix + project_name.lower()
+        blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+        container_client = blob_service_client.get_container_client(container_name)
+        container_client.create_container()
+
+        # Upload the zip file to the container
+        blob_client = container_client.get_blob_client(zip_filename)
+        with open(zip_filepath, 'rb') as data:
+            blob_client.upload_blob(data, overwrite=True)
+
+        # Delete the local zip file
+        os.remove(zip_filepath)

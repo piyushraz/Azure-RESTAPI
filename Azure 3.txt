@@ -1,0 +1,30 @@
+import requests
+
+def assign_user_to_project(file_path):
+    # Step 2
+    with open(file_path, 'r') as file:
+        # Step 3
+        lines = file.read().splitlines()
+        
+        # Step 4-5
+        for line in lines:
+            email, access_level, project_name = line.split(',')
+            
+            url = f'https://management.azure.com/subscriptions/<subscription_id>/resourceGroups/<resource_group_name>/providers/Microsoft.DevOps/project/{project_name}/users/{email}?api-version=2019-06-01-preview'
+            
+            headers = {
+                'Authorization': 'Bearer <access_token>',
+                'Content-Type': 'application/json'
+            }
+            
+            payload = {
+                'subjectDescriptor': f'{email}',
+                'accessLevel': f'{access_level}'
+            }
+            
+            response = requests.put(url, headers=headers, json=payload)
+            
+            if response.status_code == 200:
+                print(f'Successfully assigned {email} to {project_name} with access level {access_level}.')
+            else:
+                print(f'Error assigning {email} to {project_name}: {response.content}')

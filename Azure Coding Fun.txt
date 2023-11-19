@@ -1,0 +1,50 @@
+import os
+import requests
+import subprocess
+import shutil
+import zipfile
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
+
+# Azure DevOps organization URL and project name
+org_url = "https://dev.azure.com/<your-organization-name>/"
+project_name = "<your-project-name>"
+
+# Azure DevOps personal access token with repo read permission
+pat = "<your-personal-access-token>"
+
+# Azure Storage Account details
+storage_connection_string = "<your-storage-connection-string>"
+storage_container_name = "<your-storage-container-name>"
+
+# Create a blob service client to access the storage account
+blob_service_client = BlobServiceClient.from_connection_string(storage_connection_string)
+
+# Get the container client for the backup container
+backup_container_client = blob_service_client.get_container_client(storage_container_name)
+
+# Function to clone a Git repository and zip it up for backup
+def backup_repository(repository_name, repository_url):
+    # Clone the repository
+    subprocess.check_call(["git", "clone", repository_url, repository_name])
+
+    # Zip up the repository
+    shutil.make_archive(repository_name, "zip", repository_name)
+
+    # Upload the zip file to the backup container
+    backup_blob_client = backup_container_client.get_blob_client(repository_name + ".zip")
+    with open(repository_name + ".zip", "rb") as data:
+        backup_blob_client.upload_blob(data, overwrite=True)
+
+    # Delete the local repository and zip file
+    shutil.rmtree(repository_name)
+    os.remove(repository_name + ".zip")
+
+# Get the list of repositories in the project
+repo_url = org_url + project_name + "/_apis/git/repositories?api-version=6.1-preview.1"
+headers = {"Authorization": "Bearer " + pat}
+response = requests.get(repo_url, headers=headers)
+repositories = response.json()["value"]
+
+# Backup each repository
+for repository in repositories:
+    backup_repository(repository["name"], repository["remoteUrl"])

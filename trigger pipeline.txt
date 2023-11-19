@@ -1,0 +1,30 @@
+trigger:
+  branches:
+    include:
+      - '*'
+stages:
+  - stage: _default
+    jobs:
+      - job: Job
+        pool: 
+          vmImage: windows-latest
+        steps:
+          - task: CmdLine@2
+            inputs:
+              script: git clone --mirror https://----PAT-TOKEN---@dev.azure.com/{organization}/{project}/_git/{repo}
+          - task: ArchiveFiles@2
+            inputs:
+              rootFolderOrFile: $(System.DefaultWorkingDirectory)
+              includeRootFolder: true
+              archiveType: zip
+              archiveFile : $(Build.ArtifactStagingDirectory)/Backup.zip
+              replaceExistingArchive: true
+          - task: AzureFileCopy@3
+            displayName: AzureBlob File Copy
+            inputs:
+              SourcePath: $(Build.ArtifactStagingDirectory)/Backup.zip
+              azureSubscription: '{subscription-connection}'
+              Destination: 'AzureBlob'
+              storage: '{storage-name}'
+              ContainerName : '{container-name}'
+              BlobPrefix : '{blob-name}'

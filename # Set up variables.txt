@@ -1,0 +1,23 @@
+# Set up variables
+export AZURE_STORAGE_ACCOUNT="<your-storage-account-name>"
+export AZURE_STORAGE_KEY="<your-storage-account-key>"
+export AZURE_STORAGE_CONTAINER="<your-blob-container-name>"
+export AZURE_DEVOPS_PROJECT="<your-devops-project-name>"
+export AZURE_DEVOPS_REPO="<your-devops-repo-name>"
+
+# Export the project from Azure DevOps
+az devops configure --defaults organization="https://dev.azure.com/<your-org-name>"
+az devops login
+az devops project export --project $AZURE_DEVOPS_PROJECT --path ./export.zip --git-repository $AZURE_DEVOPS_REPO
+
+# Upload the backup file to Blob container
+az storage blob upload --account-name $AZURE_STORAGE_ACCOUNT --account-key $AZURE_STORAGE_KEY --container-name $AZURE_STORAGE_CONTAINER --type block --name backup.zip --source ./export.zip
+
+# Set up Azure Blob Storage task in Azure Pipelines
+- task: AzureCLI@2
+  inputs:
+    azureSubscription: "<your-azure-subscription>"
+    scriptType: "bash"
+    scriptLocation: "inlineScript"
+    inlineScript: |
+      az storage blob upload --account-name $(AZURE_STORAGE_ACCOUNT) --account-key $(AZURE_STORAGE_KEY) --container-name $(AZURE_STORAGE_CONTAINER) --type block --name backup_$(Build.BuildId).zip --source ./export.zip

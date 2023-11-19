@@ -1,0 +1,61 @@
+import os
+import requests
+from azure.storage.blob import BlobServiceClient
+
+# Azure DevOps credentials
+org_url = "https://dev.azure.com/<organization_name>"
+personal_access_token = "<personal_access_token>"
+
+# Azure Storage credentials
+storage_connection_string = "<storage_connection_string>"
+container_prefix = "backup-"
+
+def get_project_repos():
+    """
+    Retrieve a list of all projects and their repositories from Azure DevOps.
+    """
+    url = f"{org_url}/_apis/projects?api-version=6.0"
+    headers = {
+        "Authorization": f"Bearer {personal_access_token}"
+    }
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    projects = response.json()["value"]
+    repos = []
+    for project in projects:
+        project_id = project["id"]
+        project_name = project["name"]
+        url = f"{org_url}/{project_name}/_apis/git/repositories?api-version=6.0"
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        for repo in response.json()["value"]:
+            repo_name = repo["name"]
+            repos.append((project_id, project_name, repo_name))
+    return repos
+
+def backup_repos():
+    """
+    Backup each repository in Azure DevOps to a container in Azure Storage.
+    """
+    blob_service_client = BlobServiceClient.from_connection_string(storage_connection_string)
+    for project_id, project_name, repo_name in get_project_repos():
+        container_name = f"{container_prefix}{project_name}"
+        container_client = blob_service_client.get_container_client(container_name)
+        container_client.create_container()
+        blob_name = f"{repo_name}.zip"
+        blob_client = container_client.get_blob_client(blob_name)
+        url = f"{org_url}/{project_name}/_apis/git/repositories/{repo_name}/archive?format=zip"
+        headers = {
+            "Authorization": f"Bearer {personal_access_token}"
+        }
+        response = requests.get(url, headers=headers, stream=True)
+        response.raise_for_status()
+        with open(blob_name, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        with open(blob_name, "rb") as data:
+            blob_client.upload_blob(data)
+        os.remove(blob_name)
+
+if __name__ == "__main__":
+    backup_repos()

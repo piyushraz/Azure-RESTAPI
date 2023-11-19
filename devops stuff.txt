@@ -1,0 +1,35 @@
+from azure.devops.connection import Connection
+from msrest.authentication import BasicAuthentication
+
+def get_user_info(org_url, personal_access_token):
+    # Set up connection to Azure DevOps organization
+    credentials = BasicAuthentication('', personal_access_token)
+    connection = Connection(base_url=org_url, creds=credentials)
+
+    # Get list of projects in the organization
+    core_client = connection.clients.get_core_client()
+    project_list = core_client.get_projects()
+
+    # Loop through each project and get user info
+    result = []
+    for project in project_list:
+        project_name = project.name
+
+        # Get list of users in the project
+        project_client = connection.clients.get_project_client(project.id)
+        member_list = project_client.get_project_members()
+
+        # Loop through each user and get their info
+        for member in member_list:
+            user_id = member.id
+
+            # Get user info
+            member_client = connection.clients.get_member_entitlement_management_client()
+            user = member_client.get_user(user_id)
+            user_name = user.display_name
+            user_license = user.access_level.license_name
+
+            # Add user info to result
+            result.append({'project': project_name, 'name': user_name, 'license': user_license})
+
+    return result
